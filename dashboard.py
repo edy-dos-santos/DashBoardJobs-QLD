@@ -138,8 +138,8 @@ def main():
     col1, col2 = st.columns(2)
 
     with col1:
-    st.subheader("📊 Total Jobs")
-    st.markdown(
+        st.subheader("📊 Total Jobs")
+        st.markdown(
         f"""
         <div style="
             font-size:72px;
@@ -289,4 +289,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
