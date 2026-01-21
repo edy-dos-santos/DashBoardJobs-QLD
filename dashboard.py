@@ -138,16 +138,21 @@ def main():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📊 Jobs by Category")
-        category_counts = df_filtered['category'].value_counts().head(10)
-        fig1 = px.bar(
-            x=category_counts.values,
-            y=category_counts.index,
-            orientation='h',
-            labels={'x': 'Number of Jobs', 'y': 'Category'}
-        )
-        fig1.update_layout(showlegend=False, height=400)
-        st.plotly_chart(fig1, use_container_width=True)
+    st.subheader("📊 Total Jobs")
+    st.markdown(
+        f"""
+        <div style="
+            font-size:72px;
+            font-weight:700;
+            text-align:center;
+            padding-top:60px;
+        ">
+            {len(df_filtered):,}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     with col2:
         st.subheader("🏢 Top 10 Hiring Companies")
@@ -284,3 +289,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
