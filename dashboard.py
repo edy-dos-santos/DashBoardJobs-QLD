@@ -21,9 +21,13 @@ st.set_page_config(
 
 @st.cache_data
 def load_data(file_path):
-    """Load data with caching"""
+    """Load data with caching and clean column names"""
     try:
         df = pd.read_excel(file_path)
+        
+        # Clean column names (removes leading/trailing spaces)
+        df.columns = df.columns.str.strip()
+        
         if 'created' in df.columns:
             df['created'] = pd.to_datetime(df['created'])
         return df
@@ -35,19 +39,23 @@ def load_data(file_path):
 def calculate_metrics(df):
     """Calculate key metrics"""
     total_jobs = len(df)
-    unique_companies = df['company'].nunique()
+    unique_companies = df['company'].nunique() if 'company' in df.columns else 0
     
     # Jobs with salary
     if 'has_salary' in df.columns:
         jobs_with_salary = df['has_salary'].sum()
-    else:
+    elif 'salary_min' in df.columns:
         jobs_with_salary = df['salary_min'].notna().sum()
+    else:
+        jobs_with_salary = 0
     
     # Average salary
     if 'salary_avg' in df.columns:
         avg_salary = df['salary_avg'].mean()
-    else:
+    elif 'salary_min' in df.columns and 'salary_max' in df.columns:
         avg_salary = ((df['salary_min'] + df['salary_max']) / 2).mean()
+    else:
+        avg_salary = None
     
     return total_jobs, unique_companies, jobs_with_salary, avg_salary
 
@@ -74,17 +82,24 @@ def main():
         if uploaded_file:
             df = load_data(uploaded_file)
     else:
-        # Try to load from output folder
         sample_path = Path('cleaned_datasets/queensland_all_jobs.xlsx')
         if sample_path.exists():
             df = load_data(sample_path)
         else:
-            st.warning("No sample data found. Please upload a file or run the pipeline first.")
+            st.warning("No sample data found. Please upload a file.")
     
     if df is None or df.empty:
         st.info("👆 Please upload a job dataset to begin analysis")
         return
     
+    # --- DYNAMIC COLUMN SETTING ---
+    # We use 'contract _time' as requested, but check if it exists
+    shift_col = 'contract _time'
+    if shift_col not in df.columns:
+        st.sidebar.error(f"Column '{shift_col}' not found. Check Excel headers.")
+        # Fallback to avoid crash
+        shift_col = df.columns[0] 
+
     # Sidebar - Filters
     st.sidebar.header("🔍 Filters")
     
@@ -99,25 +114,24 @@ def main():
     else:
         selected_city = 'All'
     
-     # Contract Shift filter
-    contract_shifts = ['All'] + sorted([str(x) for x in df['contract _time'].unique() if pd.notna(x)])
-    selected_shift = st.sidebar.selectbox("Contract Shift", contract_shifts)
+    # Contract Shift filter (Changed from Contract Type)
+    shifts = ['All'] + sorted([str(x) for x in df[shift_col].unique() if pd.notna(x)])
+    selected_shift = st.sidebar.selectbox("Contract Shift", shifts)
     
-   # Apply filters
+    # Apply filters
     df_filtered = df.copy()
     if selected_category != 'All':
         df_filtered = df_filtered[df_filtered['category'] == selected_category]
     if selected_city != 'All' and 'city' in df_filtered.columns:
         df_filtered = df_filtered[df_filtered['city'] == selected_city]
     if selected_shift != 'All':
-        df_filtered = df_filtered[df_filtered['contract _time'] == selected_shift]
+        df_filtered = df_filtered[df_filtered[shift_col] == selected_shift]
     
     # Key Metrics
     st.header("📈 Key Metrics")
     total_jobs, unique_companies, jobs_with_salary, avg_salary = calculate_metrics(df_filtered)
     
     col1, col2, col3, col4 = st.columns(4)
-    
     with col1:
         st.metric("Total Jobs", f"{total_jobs:,}")
     with col2:
@@ -125,10 +139,7 @@ def main():
     with col3:
         st.metric("Jobs with Salary Info", f"{jobs_with_salary:,}")
     with col4:
-        if pd.notna(avg_salary):
-            st.metric("Avg. Salary", f"${avg_salary:,.0f}")
-        else:
-            st.metric("Avg. Salary", "N/A")
+        st.metric("Avg. Salary", f"${avg_salary:,.0f}" if pd.notna(avg_salary) else "N/A")
     
     st.markdown("---")
     
@@ -151,41 +162,38 @@ def main():
     
     with col2:
         st.subheader("🏢 Top 10 Hiring Companies")
-        company_counts = df_filtered['company'].value_counts().head(10)
-        fig2 = px.bar(
-            x=company_counts.values,
-            y=company_counts.index,
-            orientation='h',
-            labels={'x': 'Number of Jobs', 'y': 'Company'},
-            color=company_counts.values,
-            color_continuous_scale='Greens'
-        )
-        fig2.update_layout(showlegend=False, height=400)
-        st.plotly_chart(fig2, use_container_width=True)
+        if 'company' in df_filtered.columns:
+            company_counts = df_filtered['company'].value_counts().head(10)
+            fig2 = px.bar(
+                x=company_counts.values,
+                y=company_counts.index,
+                orientation='h',
+                labels={'x': 'Number of Jobs', 'y': 'Company'},
+                color=company_counts.values,
+                color_continuous_scale='Greens'
+            )
+            fig2.update_layout(showlegend=False, height=400)
+            st.plotly_chart(fig2, use_container_width=True)
     
     # Charts Row 2
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("📍 Jobs by Location")
-        location_counts = df_filtered['location'].value_counts().head(10)
-        fig3 = px.pie(
-            values=location_counts.values,
-            names=location_counts.index,
-            title=""
-        )
-        fig3.update_layout(height=400)
-        st.plotly_chart(fig3, use_container_width=True)
+        if 'location' in df_filtered.columns:
+            loc_counts = df_filtered['location'].value_counts().head(10)
+            fig3 = px.pie(values=loc_counts.values, names=loc_counts.index)
+            fig3.update_layout(height=400)
+            st.plotly_chart(fig3, use_container_width=True)
     
     with col2:
+        # UPDATED: PIZZA CHART FOR SHIFTS
         st.subheader("⏰ Contract Shifts")
-        # Use the 'contract _time' column for the pie chart
-        shift_counts = df_filtered['contract _time'].value_counts()
+        shift_counts = df_filtered[shift_col].value_counts()
         fig4 = px.pie(
             values=shift_counts.values,
             names=shift_counts.index,
-            hole=0.3,  # Optional: makes it a donut chart
-            title=""
+            hole=0.4 # Donut style looks cleaner
         )
         fig4.update_layout(height=400)
         st.plotly_chart(fig4, use_container_width=True)
@@ -194,81 +202,32 @@ def main():
     st.markdown("---")
     st.header("💰 Salary Analysis")
     
-    df_with_salary = df_filtered[df_filtered['salary_min'].notna() | df_filtered['salary_max'].notna()].copy()
-    
-    if len(df_with_salary) > 0:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Salary Distribution")
-            if 'salary_avg' in df_with_salary.columns:
-                salary_data = df_with_salary['salary_avg'].dropna()
-            else:
-                salary_data = ((df_with_salary['salary_min'] + df_with_salary['salary_max']) / 2).dropna()
-            
-            fig5 = px.histogram(
-                salary_data,
-                nbins=30,
-                labels={'value': 'Salary (AUD)', 'count': 'Number of Jobs'},
-                color_discrete_sequence=['#1f77b4']
-            )
-            fig5.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig5, use_container_width=True)
-        
-        with col2:
-            st.subheader("Average Salary by Category")
-            if 'salary_avg' in df_with_salary.columns:
-                salary_by_cat = df_with_salary.groupby('category')['salary_avg'].mean().sort_values(ascending=False).head(10)
-            else:
-                df_with_salary['temp_avg'] = (df_with_salary['salary_min'] + df_with_salary['salary_max']) / 2
-                salary_by_cat = df_with_salary.groupby('category')['temp_avg'].mean().sort_values(ascending=False).head(10)
-            
-            fig6 = px.bar(
-                x=salary_by_cat.values,
-                y=salary_by_cat.index,
-                orientation='h',
-                labels={'x': 'Average Salary (AUD)', 'y': 'Category'},
-                color=salary_by_cat.values,
-                color_continuous_scale='Viridis'
-            )
-            fig6.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig6, use_container_width=True)
-    else:
-        st.info("No salary information available for the selected filters")
-    
-    # Time Series
-    if 'created' in df_filtered.columns:
-        st.markdown("---")
-        st.header("📅 Jobs Posted Over Time")
-        
-        df_time = df_filtered.copy()
-        df_time['date'] = pd.to_datetime(df_time['created'])
-        jobs_by_date = df_time.groupby(df_time['date'].dt.date).size().reset_index()
-        jobs_by_date.columns = ['Date', 'Jobs Posted']
-        
-        fig7 = px.line(
-            jobs_by_date,
-            x='Date',
-            y='Jobs Posted',
-            markers=True
-        )
-        fig7.update_layout(height=400)
-        st.plotly_chart(fig7, use_container_width=True)
-    
+    if 'salary_min' in df_filtered.columns:
+        df_sal = df_filtered[df_filtered['salary_min'].notna()].copy()
+        if not df_sal.empty:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Salary Distribution")
+                sal_vals = ((df_sal['salary_min'] + df_sal['salary_max']) / 2)
+                fig5 = px.histogram(sal_vals, nbins=30, labels={'value': 'Salary (AUD)'})
+                st.plotly_chart(fig5, use_container_width=True)
+            with col2:
+                st.subheader("Average Salary by Category")
+                df_sal['avg'] = (df_sal['salary_min'] + df_sal['salary_max']) / 2
+                sal_cat = df_sal.groupby('category')['avg'].mean().sort_values(ascending=False).head(10)
+                fig6 = px.bar(x=sal_cat.values, y=sal_cat.index, orientation='h')
+                st.plotly_chart(fig6, use_container_width=True)
+        else:
+            st.info("No salary data available for the current selection.")
+
     # Raw Data Table
     st.markdown("---")
     st.header("📋 Raw Data")
-    
-    show_columns = st.multiselect(
-        "Select columns to display",
-        df_filtered.columns.tolist(),
-        default=['title', 'company', 'location', 'category', 'salary_min', 'salary_max']
-    )
-    
-    if show_columns:
-        st.dataframe(df_filtered[show_columns], use_container_width=True)
-    
-    # Download button
+    show_cols = st.multiselect("Select columns", df_filtered.columns.tolist(), 
+                               default=df_filtered.columns[:6].tolist())
+    st.dataframe(df_filtered[show_cols], use_container_width=True)
+
+    # Download
     st.download_button(
         label="📥 Download Filtered Data",
         data=df_filtered.to_csv(index=False).encode('utf-8'),
@@ -276,8 +235,5 @@ def main():
         mime="text/csv"
     )
 
-
 if __name__ == "__main__":
-
     main()
-
