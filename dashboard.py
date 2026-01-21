@@ -100,7 +100,7 @@ def main():
         selected_city = 'All'
     
      # Contract Shift filter
-    contract_shifts = ['All'] + sorted([str(x) for x in df['contract_shift'].unique() if pd.notna(x)])
+    contract_shifts = ['All'] + sorted([str(x) for x in df['contract _time'].unique() if pd.notna(x)])
     selected_shift = st.sidebar.selectbox("Contract Shift", contract_shifts)
     
    # Apply filters
@@ -109,9 +109,8 @@ def main():
         df_filtered = df_filtered[df_filtered['category'] == selected_category]
     if selected_city != 'All' and 'city' in df_filtered.columns:
         df_filtered = df_filtered[df_filtered['city'] == selected_city]
-    # Updated logic for shifts
     if selected_shift != 'All':
-        df_filtered = df_filtered[df_filtered['contract_shift'] == selected_shift]
+        df_filtered = df_filtered[df_filtered['contract _time'] == selected_shift]
     
     # Key Metrics
     st.header("📈 Key Metrics")
@@ -179,12 +178,13 @@ def main():
         st.plotly_chart(fig3, use_container_width=True)
     
     with col2:
-        st.subheader("⏰ Contract Shifts") # Changed title
-        # Calculate counts for shifts instead of types
-        shift_counts = df_filtered['contract_shift'].value_counts()
+        st.subheader("⏰ Contract Shifts")
+        # Use the 'contract _time' column for the pie chart
+        shift_counts = df_filtered['contract _time'].value_counts()
         fig4 = px.pie(
             values=shift_counts.values,
             names=shift_counts.index,
+            hole=0.3,  # Optional: makes it a donut chart
             title=""
         )
         fig4.update_layout(height=400)
@@ -280,3 +280,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
