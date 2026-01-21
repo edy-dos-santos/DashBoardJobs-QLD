@@ -99,18 +99,19 @@ def main():
     else:
         selected_city = 'All'
     
-    # Contract type filter
-    contract_types = ['All'] + sorted([str(x) for x in df['contract_type'].unique() if pd.notna(x)])
-    selected_contract = st.sidebar.selectbox("Contract Type", contract_types)
+     # Contract Shift filter
+    contract_shifts = ['All'] + sorted([str(x) for x in df['contract_shift'].unique() if pd.notna(x)])
+    selected_shift = st.sidebar.selectbox("Contract Shift", contract_shifts)
     
-    # Apply filters
+   # Apply filters
     df_filtered = df.copy()
     if selected_category != 'All':
         df_filtered = df_filtered[df_filtered['category'] == selected_category]
     if selected_city != 'All' and 'city' in df_filtered.columns:
         df_filtered = df_filtered[df_filtered['city'] == selected_city]
-    if selected_contract != 'All':
-        df_filtered = df_filtered[df_filtered['contract_type'] == selected_contract]
+    # Updated logic for shifts
+    if selected_shift != 'All':
+        df_filtered = df_filtered[df_filtered['contract_shift'] == selected_shift]
     
     # Key Metrics
     st.header("📈 Key Metrics")
@@ -178,11 +179,12 @@ def main():
         st.plotly_chart(fig3, use_container_width=True)
     
     with col2:
-        st.subheader("📝 Contract Types")
-        contract_counts = df_filtered['contract_type'].value_counts()
+        st.subheader("⏰ Contract Shifts") # Changed title
+        # Calculate counts for shifts instead of types
+        shift_counts = df_filtered['contract_shift'].value_counts()
         fig4 = px.pie(
-            values=contract_counts.values,
-            names=contract_counts.index,
+            values=shift_counts.values,
+            names=shift_counts.index,
             title=""
         )
         fig4.update_layout(height=400)
@@ -276,4 +278,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
