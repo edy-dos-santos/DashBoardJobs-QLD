@@ -142,8 +142,8 @@ def main():
         st.markdown(
         f"""
         <div style="
-            font-size:72px;
-            font-weight:700;
+            font-size:120px;
+            font-weight:800;
             text-align:center;
             padding-top:60px;
         ">
@@ -289,5 +289,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
