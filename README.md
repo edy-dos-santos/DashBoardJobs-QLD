@@ -2,7 +2,7 @@ Dashboard with job datasets of certain Queensland industries.
 
 This project is a prototype meant to be used directly for a non-disclosed company which required a solution to gather jobs in the referred industries using automation.
 
-![dashboard example](https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/Sample.png)
+![dashboard example](https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/dashboard_portrait.png)
 
 What it does
 
@@ -67,7 +67,7 @@ Data collection
 
 The jobs are gathered by an automated pipeline that runs separately from this dashboard. The pipeline and the datasets belong to the client and are not part of this repository. The dashboard only reads the cleaned Excel output.
 
-![data sample]((https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/dashboard_portrait.png))
+![data sample](https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/Sample.png)
 
 Status
 
