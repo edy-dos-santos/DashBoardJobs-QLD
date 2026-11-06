@@ -67,7 +67,7 @@ Data collection
 
 The jobs are gathered by an automated pipeline that runs separately from this dashboard. The pipeline and the datasets belong to the client and are not part of this repository. The dashboard only reads the cleaned Excel output.
 
-![data sample](https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/Sample.png)
+![data sample]((https://github.com/edy-dos-santos/DashBoardJobs-QLD/blob/main/dashboard_portrait.png))
 
 Status
 
